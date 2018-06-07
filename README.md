@@ -98,7 +98,7 @@ que se explica en el ítem anterior. Dicha función no debe retornar nada.
 Los alumnos pueden crear las tablas temporarias y las funciones auxiliares que
 consideren necesarias para lograr el objetivo solicitado.
 ```
-## b) Y para garantizar que, para un usuario dado, no se vuelvan a introducir intervalos
+ b) Y para garantizar que, para un usuario dado, no se vuelvan a introducir intervalos
 
 ```
 solapados en la tabla RECORRIDO_FINAL, se debe crear el trigger
