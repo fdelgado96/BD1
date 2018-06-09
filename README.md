@@ -27,4 +27,4 @@ sudo -u postgres psql -d bd_tpe -a -f src/scripts/create_table.sql
 
 * **Francisco Delgado**
 * **Martina Scomazzon**
-* **Federico Mammone**
+* **Federico Mamone**
