@@ -4,6 +4,14 @@ RETURNS void
 AS $$
 
 DECLARE
+        usuarioCursor CURSOR FOR
+	SELECT distinct id_usuario FROM keyViolationTouples;
+        fechaCursor CURSOR FOR
+	SELECT fecha_hora_retiro FROM keyViolationTouples;
+
+        usuario auxTable.id_usuario%TYPE;
+        fecha_retiro auxTable.fecha_hora_retiro%TYPE;
+
 BEGIN
         CREATE TEMP TABLE IF NOT EXISTS auxTable(
         periodo TEXT,
@@ -15,6 +23,7 @@ BEGIN
         nombre_destino TEXT, 
         tiempo_uso TEXT,
         fecha_creation TIMESTAMP,
+        primaryKey(id_usuario, fecha_hora_retiro, tiempo_uso),
         );
         
         COPY auxTable
@@ -38,12 +47,36 @@ BEGIN
                                 HAVING COUNT(id_usuario) > 1)
         ORDER BY id_usuario ASC);
 
-        DELETE FROM auxTable (SELECT * FROM keyViolationTouples)
+        DELETE FROM auxTable (SELECT * FROM keyViolationTouples );
+
+        DELETE FROM auxTable (SELECT * FROM keyViolationTouples);
+
+BEGIN
+
+	OPEN usuarioCursor;
+	LOOP
+		FETCH usuarioCursor INTO usuario;   
+	
+			OPEN fechaCursor;
+                        FETCH fechaCursor INTO fecha_retiro;
+                        DELETE 
+                        FETCH fechaCursor INTO fecha_retiro;
+
+                        INSERT INTO validatedKeyTable 
+			LOOP
+				FETCH fechaCursor INTO fecha_retiro;			
+                                
+				EXIT WHEN NOT FOUND;
+				END LOOP;
+				CLOSE fechaCursor;
+	
+		EXIT WHEN NOT FOUND;
+		END LOOP;
+		CLOSE usuarioCursor;
 
 
-        
-        SELECT * FROM bici, newTable 
-        WHERE bici.id_usuario = newTable.id AND bici.fecha_hora_retiro = newTable.fecha 
+        SELECT * FROM auxTable, newTable 
+        WHERE auxTable.id_usuario = newTable.id AND auxTable.fecha_hora_retiro = newTable.fecha 
         ORDER BY tiempo_uso ASC
         LIMIT 1 OFFSET 1;
         DROP TABLE auxTable; 
