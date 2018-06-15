@@ -33,23 +33,28 @@ BEGIN
 					WHERE id_usuario = usuario
 					AND fecha_hora_ret = fecha_ret;
 
-					SELECT COUNT(*), fecha_hora_dev, destino_estacion, fecha_hora_ret INTO cant, fecha_dev_aux, destino, fecha_ret_aux  
+					SELECT COUNT(*) INTO cant  
                                         FROM auxTable
 					WHERE id_usuario = usuario
-					GROUP BY fecha_hora_dev, destino_estacion, fecha_hora_ret
-					HAVING fecha_hora_ret <> fecha_ret
+					AND fecha_hora_ret <> fecha_ret
 					AND fecha_hora_ret BETWEEN fecha_ret AND fecha_dev;
 					
 
 					IF cant > 0 THEN
 					
-						IF fecha_dev_aux > fecha_dev THEN
+                                                SELECT fecha_hora_dev, destino_estacion, fecha_hora_ret INTO fecha_dev_aux, destino, fecha_ret_aux  
+                                                FROM auxTable
+                                                WHERE id_usuario = usuario                                                
+                                                AND fecha_hora_ret <> fecha_ret
+                                                AND fecha_hora_ret BETWEEN fecha_ret AND fecha_dev;
+                                                
+					
+						IF fecha_dev_aux BETWEEN fecha_dev AND current_timestamp THEN
 
 							UPDATE auxTable set fecha_hora_dev = fecha_dev_aux, destino_estacion = destino
-							FROM auxTable
 							WHERE id_usuario = usuario
 							AND fecha_hora_ret = fecha_ret;
-                        END IF;
+                                                END IF;
                                                 
                                                 
 						DELETE FROM auxTable
@@ -67,6 +72,5 @@ BEGIN
 		END LOOP;
 		CLOSE usuarioCursor;
 	
-RETURN;
 END;
 $$ LANGUAGE plpgsql; 
