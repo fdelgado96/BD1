@@ -61,8 +61,7 @@ BEGIN
                         or destino_estacion IS NULL
                         or tiempo_uso IS NULL;
                 UPDATE import_table
-
-        SET tiempo_uso = REPLACE(REPLACE(REPLACE(tiempo_uso,'SEG',' second'),'MIN',' min'),'H',' hours');
+                SET tiempo_uso = REPLACE(REPLACE(REPLACE(tiempo_uso,'SEG',' second'),'MIN',' min'),'H',' hours');
         
         INSERT INTO aux_table SELECT periodo, id_usuario, fecha_hora_retiro, origen_estacion, 
                                 nombre_origen, destino_estacion, nombre_destino, CAST(tiempo_uso AS INTERVAL), 
@@ -83,8 +82,8 @@ BEGIN
                     FETCH remove_cursor INTO usuario;   
                     EXIT WHEN NOT FOUND;
                     PERFORM get_second (remove_cursor.id_usuario, remove_cursor.fecha_hora_retiro); 
-                END LOOP
-        CLOSE remove_cursor; 
+                END LOOP; 
+        CLOSE remove_cursor;  
         RETURN; 
 END; 
 $$ LANGUAGE plpgSQL; 
@@ -100,8 +99,8 @@ DECLARE
     usuario RECORD; 
 BEGIN
     OPEN fechaCursor; 
-        FETCH fechaCursor INTO fecha_retiro;
-        FETCH fechaCursor INTO fecha_retiro;
+        FETCH fechaCursor INTO usuario;
+        FETCH fechaCursor INTO usuario;
             INSERT INTO aux_table (periodo, id_usuario, fecha_hora_retiro, origen_estacion,
                 nombre_origen, destino_estacion, nombre_destino, tiempo_uso,
                 fecha_creacion) VALUES (fechaCursor.periodo, fechaCursor.id_usuario, 
@@ -117,12 +116,7 @@ DROP TABLE aux_table;
 DROP TABLE import_table; 
 DROP TABLE invalidated_table; 
 
-Select * from migrate(); 
-
-select*from aux_table; 
-select*from import_table;
-
-
-OPEN fechaCursor;
-                                
-                        END LOOP; 
+SELECT * FROM migrate(); 
+SELECT * FROM aux_table; 
+SELECT * FROM import_table;
+SELECT * FROM invalidated_table; 
