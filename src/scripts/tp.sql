@@ -11,7 +11,7 @@ CREATE TEMP TABLE IF NOT EXISTS import_table(
         tiempo_uso TEXT,
         fecha_creacion TIMESTAMP
 );
-COPY import_table FROM '/Users/martinascomazzon/BD1/resources/test1.csv' DELIMITER ';' CSV HEADER;
+COPY import_table FROM '/home/francisco/itba/BD1/resources/test1.csv' DELIMITER ';' CSV HEADER;
 
 CREATE TEMP TABLE IF NOT EXISTS aux_table(
         periodo TEXT,
@@ -43,48 +43,59 @@ RETURNS void
 AS $$
 
 DECLARE
-        remove_cursor CURSOR FOR
-        SELECT id_usuario, fecha_hora_retiro FROM invalidated_table;
         
+        remove_cursor CURSOR FOR 
+        SELECT DISTINCT id_usuario, fecha_hora_retiro 
+        FROM import_table 
+        WHERE id_usuario IS NOT NULL AND fecha_hora_retiro IS NOT NULL AND origen_estacion IS NOT NULL AND destino_estacion IS NOT NULL
+        AND tiempo_uso IS NOT NULL 
+        AND CAST(REPLACE(REPLACE(REPLACE(tiempo_uso,'SEG',' second'),'MIN',' min'),'H',' hours') AS INTERVAL)IS NOT NULL
+        GROUP BY id_usuario, fecha_hora_retiro
+        HAVING count(id_usuario) > 1;
+        touple RECORD;
+
         -- fechaCursor CURSOR FOR
         -- SELECT fecha_hora_retiro FROM invalidated_table; 
 
-        usuario RECORD;
+        invalid_touple RECORD;
         --fecha_retiro TIMESTAMP;
 
 BEGIN
 
-        DELETE FROM import_table 
-                WHERE id_usuario IS NULL
-                        or fecha_hora_retiro IS NULL
-                        or origen_estacion IS NULL
-                        or destino_estacion IS NULL
-                        or tiempo_uso IS NULL;
-                UPDATE import_table
-                SET tiempo_uso = REPLACE(REPLACE(REPLACE(tiempo_uso,'SEG',' second'),'MIN',' min'),'H',' hours');
-        
         INSERT INTO aux_table SELECT periodo, id_usuario, fecha_hora_retiro, origen_estacion, 
-                                nombre_origen, destino_estacion, nombre_destino, CAST(tiempo_uso AS INTERVAL), 
+                                nombre_origen, destino_estacion, nombre_destino, CAST(REPLACE(REPLACE(REPLACE(tiempo_uso,'SEG',' second'),'MIN',' min'),'H',' hours') AS INTERVAL), 
                                 fecha_creacion
                                 FROM import_table
                                 WHERE (id_usuario, fecha_hora_retiro) NOT IN (SELECT id_usuario, fecha_hora_retiro FROM import_table
                                         GROUP BY id_usuario, fecha_hora_retiro HAVING COUNT(*) > 1); 
-        
-        INSERT INTO invalidated_table SELECT periodo, id_usuario, fecha_hora_retiro, origen_estacion, 
-                                nombre_origen, destino_estacion, nombre_destino, CAST(tiempo_uso AS INTERVAL), 
-                                fecha_creacion
-                                FROM import_table
-                                WHERE (id_usuario, fecha_hora_retiro) IN (SELECT id_usuario, fecha_hora_retiro FROM import_table
-                                        GROUP BY id_usuario, fecha_hora_retiro HAVING COUNT(*) > 1); 
         -- save second -- 
-        OPEN remove_cursor; 
-               LOOP
-                    FETCH remove_cursor INTO usuario;   
-                    EXIT WHEN NOT FOUND;
-                    PERFORM get_second (remove_cursor.id_usuario, remove_cursor.fecha_hora_retiro); 
-                END LOOP; 
-        CLOSE remove_cursor;  
-        RETURN; 
+        
+        OPEN remove_cursor;
+        LOOP
+        FETCH remove_cursor INTO touple;
+        EXIT WHEN NOT FOUND;
+
+        CREATE TABLE invalid_touples AS SELECT * FROM aux_table WHERE
+        tuple.id_usuario = aux.id_usuario AND tuple.fecha_hora_retiro = aux.fecha_hora_retiro
+        ORDER BY CAST(replace(replace(replace(aux.tiempo_uso, 'H ', 'H'), 'MIN ', 'M'), 'SEG', 'S') AS INTERVAL);
+
+        FOR invalid_touple IN SELECT * FROM invalid_touples LIMIT 1 
+        LOOP
+        DELETE FROM aux_table WHERE (invalid_touple.destino_estacion = aux.destino_estacion AND invalid_touple.nombre_destino = aux.nombre_destino AND
+                invalid_touple.nombre_origen = aux.nombre_origen AND invalid_touple.periodo = aux.periodo AND
+                 invalid_touple.origen_estacion = aux.origen_estacion AND invalid_touple.tiempo_uso = aux.tiempo_uso AND invalid_touple.fecha_creacion = aux.fecha_creacion);
+        END LOOP;
+
+        FOR invalid_touple IN SELECT * FROM invalid_touples OFFSET 2 
+        LOOP
+        DELETE FROM aux WHERE (invalid_touple.destino_estacion = aux.destino_estacion AND invalid_touple.nombre_destino = aux.nombre_destino AND
+                invalid_touple.nombre_origen = aux.nombre_origen AND invalid_touple.periodo = aux.periodo AND
+                 invalid_touple.origen_estacion = aux.origen_estacion AND invalid_touple.tiempo_uso = aux.tiempo_uso AND invalid_touple.fecha_creacion = aux.fecha_creacion);
+        END LOOP;
+
+        DELETE FROM invalid_touples;
+        END LOOP;
+        CLOSE remove_cursor;
 END; 
 $$ LANGUAGE plpgSQL; 
 
@@ -119,4 +130,4 @@ DROP TABLE invalidated_table;
 SELECT * FROM migrate(); 
 SELECT * FROM aux_table; 
 SELECT * FROM import_table;
-SELECT * FROM invalidated_table; 
+SELECT * FROM invalidated_table;
